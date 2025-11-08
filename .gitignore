@@ -1,0 +1,29 @@
+# Ejecutables compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Directorio de builds
+/dist/
+bin/
+out/
+
+# Archivos de pruebas generados por `go test`
+*.out
+
+# Archivos temporales del editor/IDE
+*.swp
+*.swo
+*.tmp
+
+# Módulos descargados (opcionales, normalmente no se ignoran)
+vendor/
+
+# Configuración local
+.env
+*.local
+*.env.*
+!.env.template
