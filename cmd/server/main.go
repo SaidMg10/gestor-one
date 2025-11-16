@@ -12,9 +12,12 @@ import (
 
 	"github.com/SaidMg10/gestor-one/internal/config"
 	"github.com/SaidMg10/gestor-one/internal/db"
+	"github.com/SaidMg10/gestor-one/internal/repository"
+	"github.com/SaidMg10/gestor-one/internal/service"
 	httpTransport "github.com/SaidMg10/gestor-one/internal/transport/http"
 )
 
+// Main initializes the application and starts the server.
 func main() {
 	// Cargar configuración desde ./config/config.yml
 	// Inicializar configuración
@@ -30,10 +33,10 @@ func main() {
 	defer db.Close()
 
 	// 3. Inicializar repositorios y servicios
-	//userRepo := repository.NewPgxUserRepo(pool)
-	//userSvc := service.NewUserService(userRepo)
+	userRepo := repository.NewGormUserRepo(db.DB)
+	userSvc := service.NewUserService(userRepo)
 
-	r := httpTransport.NewRouter()
+	r := httpTransport.NewRouter(userSvc)
 
 	// Mostrar que la config se cargó correctamente
 	fmt.Println("=================================")

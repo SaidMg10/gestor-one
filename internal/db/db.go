@@ -13,6 +13,7 @@ import (
 
 var DB *gorm.DB
 
+// Init initializes the database connection.
 func Init(cfg config.DBConfig) error {
 	dsn := cfg.DSN
 	if dsn == "" {
@@ -57,6 +58,7 @@ func Init(cfg config.DBConfig) error {
 	return nil
 }
 
+// Close closes the database connection.
 func Close() error {
 	if DB == nil {
 		return nil
