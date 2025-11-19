@@ -27,9 +27,7 @@ func (p *Password) Compare(plain string) error {
 	return bcrypt.CompareHashAndPassword(p.hash, []byte(plain))
 }
 
-// ----------------------------
-// Este es el Value() que GORM usa automáticamente
-// ----------------------------
+// Value que GORM usa automáticamente
 func (p Password) Value() (driver.Value, error) {
 	if len(p.hash) == 0 {
 		return nil, nil
@@ -37,7 +35,7 @@ func (p Password) Value() (driver.Value, error) {
 	return string(p.hash), nil
 }
 
-// Scan() también va dentro del struct Password
+// Scan también va dentro del struct Password
 func (p *Password) Scan(value any) error {
 	if value == nil {
 		p.hash = nil

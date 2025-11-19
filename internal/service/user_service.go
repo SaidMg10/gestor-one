@@ -1,10 +1,13 @@
+// Package service implements the business logic of the application.
 package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/SaidMg10/gestor-one/internal/domain"
+	"github.com/SaidMg10/gestor-one/internal/validator"
 )
 
 type UserService struct {
@@ -17,14 +20,15 @@ func NewUserService(u domain.UserRepo) *UserService {
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, user *domain.User) error {
-	// Validaciones de logica en el create
-	// Regla de negocio:
-	// 1. No pueden crear un superadmin
-	if user.Role == domain.RoleSuperAdmin {
-		return fmt.Errorf("Cannot create a superadmin")
+func (s *UserService) Create(ctx context.Context, user *domain.User, pwd string) error {
+	if err := validator.ValidatePassword(pwd); err != nil {
+		return err
 	}
-	// 2. Validar que el email no exista en la base de datos
+
+	if !validator.IsValidEmail(user.Email) {
+		return domain.ErrInvalidEmail
+	}
+
 	exists, err := s.userRepo.ExistsByEmail(ctx, user.Email)
 	if err != nil {
 		return err
@@ -32,14 +36,22 @@ func (s *UserService) Create(ctx context.Context, user *domain.User) error {
 	if exists {
 		return domain.ErrEmailExists
 	}
-	if !domain.IsValidRole(user.Role) {
-		return fmt.Errorf("invalid role")
+
+	if user.Role == domain.RoleSuperAdmin {
+		return errors.New("no se puede crear un superadmin")
 	}
-	// 3. If role is ""
 	if user.Role == "" {
 		user.Role = domain.RoleEmployee
 	}
 
+	if user.Active == nil {
+		active := true
+		user.Active = &active
+	}
+
+	if err := user.Password.Set(pwd); err != nil {
+		return fmt.Errorf("error al hashear la contraseña: %w", err)
+	}
 	return s.userRepo.Create(ctx, user)
 }
 
@@ -55,61 +67,60 @@ func (s *UserService) GetByEmail(ctx context.Context, email string) (*domain.Use
 	return s.userRepo.GetByEmail(ctx, email)
 }
 
-func (s *UserService) Update(ctx context.Context, id uint, input *domain.User) error {
+func (s *UserService) Update(ctx context.Context, id uint, updates *domain.User, pwd *string) error {
 	existing, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
-
-	// 1. No tocar superadmin
-	if existing.Role == domain.RoleSuperAdmin {
-		return fmt.Errorf("Cannot update a superadmin")
+	if existing == nil {
+		return domain.ErrNotFound
 	}
 
-	if !domain.IsValidRole(input.Role) {
-		return fmt.Errorf("invalid role")
-	}
+	if updates.Email != "" && updates.Email != existing.Email {
+		if !validator.IsValidEmail(updates.Email) {
+			return domain.ErrInvalidEmail
+		}
 
-	// 2. Email único (si se envía)
-	if input.Email != "" && input.Email != existing.Email {
-		exists, err := s.userRepo.ExistsByEmail(ctx, input.Email)
+		exists, err := s.userRepo.ExistsByEmail(ctx, updates.Email)
 		if err != nil {
 			return err
 		}
 		if exists {
 			return domain.ErrEmailExists
 		}
-		existing.Email = input.Email
+
+		existing.Email = updates.Email
 	}
 
-	// 3. Validar role (si se envía)
-	if input.Role != "" {
-		if input.Role == domain.RoleSuperAdmin {
-			return fmt.Errorf("Cannot assign superadmin role")
+	if pwd != nil && *pwd != "" {
+		if err := validator.ValidatePassword(*pwd); err != nil {
+			return err
 		}
-		existing.Role = input.Role
+		if err := existing.Password.Set(*pwd); err != nil {
+			return fmt.Errorf("error al hashear la contraseña: %w", err)
+		}
 	}
 
-	// 4. Actualizar campos simples
-	if input.Name != "" {
-		existing.Name = input.Name
+	if updates.Name != "" {
+		existing.Name = updates.Name
 	}
-	if input.LastName != "" {
-		existing.LastName = input.LastName
+	if updates.LastName != "" {
+		existing.LastName = updates.LastName
 	}
-	if input.Phone != "" {
-		existing.Phone = input.Phone
+	if updates.Phone != "" {
+		existing.Phone = updates.Phone
+	}
+	if updates.Role != "" {
+		if updates.Role == domain.RoleSuperAdmin {
+			return errors.New("no se puede asignar rol superadmin")
+		}
+		existing.Role = updates.Role
+	}
+	if updates.Active != nil {
+		existing.Active = updates.Active
 	}
 
-	// 5. Nueva contraseña (si viene)
-	if input.Password.HasHash() {
-		existing.Password = input.Password
-	}
-
-	if input.Active != nil {
-		existing.Active = input.Active
-	}
-
+	// 6️⃣ Guardar
 	return s.userRepo.Update(ctx, existing)
 }
 
