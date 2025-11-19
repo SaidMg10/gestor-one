@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/SaidMg10/gestor-one/internal/domain"
 	"github.com/SaidMg10/gestor-one/internal/service"
@@ -60,55 +61,36 @@ func (h *UserHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Validacion de campos obligatorios
-	if req.Password == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Password is required"})
-		return
-	}
-	// Conversion DTO a Domain User
-	pwd := domain.Password{}
-	if err := pwd.Set(req.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process password internally"})
-		return
-	}
-
-	active := true
-	if req.Active != nil {
-		active = *req.Active
-	}
 
 	userEntity := &domain.User{
 		Name:     req.Name,
 		LastName: req.LastName,
 		Email:    req.Email,
 		Phone:    req.Phone,
-		Password: pwd,
 		Role:     req.Role,
-		Active:   &active,
 	}
 
-	if err := h.svc.Create(c.Request.Context(), userEntity); err != nil {
-		status := http.StatusInternalServerError
-		// Mapeo de errores de Dominio a códigos HTTP
-		if errors.Is(err, domain.ErrEmailExists) {
-			status = http.StatusConflict // 409
+	if err := h.svc.Create(c.Request.Context(), userEntity, req.Password); err != nil {
+		// Default status
+		status := http.StatusBadRequest
+
+		// Mapear errores específicos a HTTP
+		switch {
+		case errors.Is(err, domain.ErrEmailExists):
+			status = http.StatusConflict
+		case strings.Contains(err.Error(), "contraseña"):
+			status = http.StatusBadRequest
+		case strings.Contains(err.Error(), "email inválido"):
+			status = http.StatusBadRequest
+		case strings.Contains(err.Error(), "superadmin"):
+			status = http.StatusForbidden
 		}
+
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Respuesta Correcta: Mapear la Entidad a un Response DTO
-	response := UserResponse{
-		ID:       userEntity.ID,
-		Name:     userEntity.Name,
-		LastName: userEntity.LastName,
-		Email:    userEntity.Email,
-		Phone:    userEntity.Phone,
-		Role:     userEntity.Role,
-		Active:   *userEntity.Active,
-	}
-
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, userEntity)
 }
 
 func (h *UserHandler) List(c *gin.Context) {
@@ -163,7 +145,7 @@ func (h *UserHandler) GetByID(c *gin.Context) {
 
 func (h *UserHandler) Update(c *gin.Context) {
 	idParam := c.Param("id")
-	id, err := strconv.ParseUint(idParam, 10, 32)
+	id, err := strconv.ParseUint(idParam, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -175,7 +157,6 @@ func (h *UserHandler) Update(c *gin.Context) {
 		return
 	}
 
-	// Convertir DTO → domain.User (solo campos enviados)
 	user := &domain.User{}
 
 	if req.Name != nil {
@@ -197,30 +178,27 @@ func (h *UserHandler) Update(c *gin.Context) {
 		user.Active = req.Active
 	}
 
-	// Si se envía password, generar hash y asignarlo
+	var pwd *string
 	if req.Password != nil {
-		var pwd domain.Password
-		if err := pwd.Set(*req.Password); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot hash password"})
+		pwd = req.Password
+	}
+
+	err = h.svc.Update(c.Request.Context(), uint(id), user, pwd)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrEmailExists):
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		case errors.Is(err, domain.ErrNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		user.Password = pwd
 	}
 
-	// Llamar al servicio
-	err = h.svc.Update(c.Request.Context(), uint(id), user)
-	if err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, domain.ErrEmailExists) {
-			status = http.StatusConflict
-		} else if errors.Is(err, domain.ErrNotFound) {
-			status = http.StatusNotFound
-		}
-		c.JSON(status, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "updated"})
+	c.Status(http.StatusNoContent)
 }
 
 func (h *UserHandler) Delete(c *gin.Context) {
@@ -239,5 +217,5 @@ func (h *UserHandler) Delete(c *gin.Context) {
 		c.JSON(status, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+	c.Status(http.StatusNoContent)
 }

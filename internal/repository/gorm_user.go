@@ -1,3 +1,4 @@
+// Package repository implements the Repository patern for data persistence using Gorm ORM.
 package repository
 
 import (
@@ -44,9 +45,11 @@ func (r *GormUserRepo) List(ctx context.Context) ([]domain.User, error) {
 	}
 	return users, nil
 }
+
 func (r *GormUserRepo) Create(ctx context.Context, user *domain.User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
+
 func (r *GormUserRepo) Update(ctx context.Context, user *domain.User) error {
 	return r.db.WithContext(ctx).
 		Model(&domain.User{}).
