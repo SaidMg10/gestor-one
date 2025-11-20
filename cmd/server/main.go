@@ -30,7 +30,11 @@ func main() {
 		log.Fatalf("X error initializing database: %v", err)
 		return
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("Error closing database: %v", err)
+		}
+	}()
 
 	// 3. Inicializar repositorios y servicios
 	userRepo := repository.NewGormUserRepo(db.DB)
