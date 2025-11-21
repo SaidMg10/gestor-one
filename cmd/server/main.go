@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/SaidMg10/gestor-one/internal/auth"
 	"github.com/SaidMg10/gestor-one/internal/config"
 	"github.com/SaidMg10/gestor-one/internal/db"
 	"github.com/SaidMg10/gestor-one/internal/repository"
@@ -36,11 +37,20 @@ func main() {
 		}
 	}()
 
+	auth := auth.NewJWTAuthenticatorFromConfig(cfg.JWT)
+
 	// 3. Inicializar repositorios y servicios
 	userRepo := repository.NewGormUserRepo(db.DB)
 	userSvc := service.NewUserService(userRepo)
+	authSvc := service.NewAuthService(
+		userRepo, // repositorio de usuarios
+		auth,     // Authenticator
+		cfg.JWT.AccessTokenTTL,
+		cfg.JWT.RefreshTokenTTL,
+		cfg.JWT.Issuer,
+	)
 
-	r := httpTransport.NewRouter(userSvc)
+	r := httpTransport.NewRouter(userSvc, authSvc)
 
 	// Mostrar que la config se cargó correctamente
 	fmt.Println("=================================")
