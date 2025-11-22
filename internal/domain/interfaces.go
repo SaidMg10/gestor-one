@@ -1,6 +1,8 @@
 package domain
 
-import "context"
+import (
+	"context"
+)
 
 // UserRepo defines an interface with methods for managing User entities.
 type UserRepo interface {

@@ -1,3 +1,4 @@
+// Package db provides database connection functionality.
 package db
 
 import (
