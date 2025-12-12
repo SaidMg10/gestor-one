@@ -9,7 +9,11 @@ import (
 )
 
 // NewRouter creates a new Gin router.
-func NewRouter(userSvc *service.UserService, authSvc *service.AuthService) *gin.Engine {
+func NewRouter(
+	userSvc *service.UserService,
+	authSvc *service.AuthService,
+	incomeSvc *service.IncomeService,
+) *gin.Engine {
 	r := gin.Default()
 
 	// Middleware de CORS básico
@@ -101,6 +105,21 @@ func NewRouter(userSvc *service.UserService, authSvc *service.AuthService) *gin.
 					"role":    "superadmin",
 				})
 			})
+		}
+
+		// Incomes routes
+		incomes := v1.Group("/incomes")
+		incomes.Use(middleware.AuthTokenMiddleware())
+		{
+			incomeHandler := NewIncomeHandler(incomeSvc)
+			incomes.GET("", incomeHandler.List)
+			// incomes.GET("/:id", incomeHandler.GetByID)
+			incomes.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin, domain.RoleEmployee))
+			incomes.POST("", incomeHandler.Create)
+			incomes.PATCH("/:id", incomeHandler.Update)
+			incomes.DELETE("/:id/soft", incomeHandler.SoftDelete)
+			incomes.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin))
+			incomes.DELETE("/:id", incomeHandler.Delete)
 		}
 
 		// Products routes

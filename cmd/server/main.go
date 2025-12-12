@@ -15,6 +15,7 @@ import (
 	"github.com/SaidMg10/gestor-one/internal/db"
 	"github.com/SaidMg10/gestor-one/internal/repository"
 	"github.com/SaidMg10/gestor-one/internal/service"
+	"github.com/SaidMg10/gestor-one/internal/storage"
 	httpTransport "github.com/SaidMg10/gestor-one/internal/transport/http"
 )
 
@@ -39,8 +40,11 @@ func main() {
 
 	auth := auth.NewJWTAuthenticatorFromConfig(cfg.JWT)
 
+	fileStorage := storage.NewFileStorageLocal()
+
 	// 3. Inicializar repositorios y servicios
 	userRepo := repository.NewGormUserRepo(db.DB)
+	incomeRepo := repository.NewGormIncomeRepo(db.DB)
 	userSvc := service.NewUserService(userRepo)
 	authSvc := service.NewAuthService(
 		userRepo, // repositorio de usuarios
@@ -49,8 +53,9 @@ func main() {
 		cfg.JWT.RefreshTokenTTL,
 		cfg.JWT.Issuer,
 	)
+	incomeSvc := service.NewIncomeService(incomeRepo, fileStorage)
 
-	r := httpTransport.NewRouter(userSvc, authSvc)
+	r := httpTransport.NewRouter(userSvc, authSvc, incomeSvc)
 
 	// Mostrar que la config se cargó correctamente
 	fmt.Println("=================================")

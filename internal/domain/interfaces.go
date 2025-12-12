@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"mime/multipart"
 )
 
 // UserRepo defines an interface with methods for managing User entities.
@@ -13,4 +14,30 @@ type UserRepo interface {
 	Update(ctx context.Context, user *User) error
 	Delete(ctx context.Context, id uint) error
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+}
+
+// IncomeRepo defines an interface with methods for managing Income entities.
+type IncomeRepo interface {
+	GetByID(ctx context.Context, id uint) (*Income, error)
+	List(ctx context.Context) ([]Income, error)
+	Create(ctx context.Context, income *Income) error
+	CreateWithReceipt(ctx context.Context, income *Income, receipt *Receipt) error
+	Update(ctx context.Context, income *Income) error
+	UpdateWithReceipt(ctx context.Context, income *Income, receipt *Receipt) error
+	Delete(ctx context.Context, id uint) error
+	SoftDelete(ctx context.Context, id uint) error
+}
+
+// ReceiptRepo defines an interface with methods for managing Receipt entities.
+type ReceiptRepo interface {
+	GetByID(ctx context.Context, id uint) (*Receipt, error)
+	List(ctx context.Context) ([]Receipt, error)
+	Create(ctx context.Context, receipt *Receipt) error
+	Update(ctx context.Context, receipt *Receipt) error
+	Delete(ctx context.Context, id uint) error
+}
+
+type FileStorage interface {
+	SavePDF(fileHeader *multipart.FileHeader) (string, string, string, error)
+	DeletePDF(filePath string) error
 }
