@@ -27,3 +27,6 @@ vendor/
 *.local
 *.env.*
 !.env.template
+
+# Carpeta de uploads
+uploads/
