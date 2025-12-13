@@ -20,6 +20,7 @@ func (r *GormIncomeRepo) GetByID(ctx context.Context, id uint) (*domain.Income, 
 	var income domain.Income
 	if err := r.db.WithContext(ctx).
 		Preload("Receipt").
+		Where("id = ? AND deleted_at IS NULL", id).
 		First(&income, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, domain.ErrNotFound
@@ -76,10 +77,16 @@ func (r *GormIncomeRepo) UpdateWithReceipt(
 	receipt *domain.Receipt,
 ) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&domain.Income{}).
-			Where("id = ?", income.ID).
-			Updates(income).Error; err != nil {
-			return err
+		result := tx.Model(&domain.Income{}).
+			Where("id = ? AND deleted_at IS NULL", income.ID).
+			Updates(income)
+
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.RowsAffected == 0 {
+			return domain.ErrNotFound
 		}
 
 		if receipt != nil {
