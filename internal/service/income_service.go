@@ -177,6 +177,7 @@ func (s *IncomeService) SoftDelete(ctx context.Context, id uint, userID uint) er
 		return err
 	}
 	if userID != income.CreatedBy {
+		fmt.Println("userID:", userID)
 		return errors.New("only the creator can delete this income/receipt")
 	}
 	return s.incomeRepo.SoftDelete(ctx, id)
@@ -197,6 +198,22 @@ func (s *IncomeService) Delete(ctx context.Context, id uint) error {
 
 	if err := s.fileStorage.DeletePDF(income.Receipt.FileURL); err != nil {
 		fmt.Printf("failed to remove receipt file after income delete: %v", err)
+	}
+
+	return nil
+}
+
+func (s *IncomeService) Restore(ctx context.Context, id uint) error {
+	income, err := s.incomeRepo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if income == nil {
+		return domain.ErrNotFound
+	}
+
+	if err := s.incomeRepo.Restore(ctx, id); err != nil {
+		return err
 	}
 
 	return nil

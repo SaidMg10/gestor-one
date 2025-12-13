@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/SaidMg10/gestor-one/internal/domain"
 	"gorm.io/gorm"
@@ -32,6 +33,7 @@ func (r *GormIncomeRepo) List(ctx context.Context) ([]domain.Income, error) {
 	var incomes []domain.Income
 	if err := r.db.WithContext(ctx).
 		Preload("Receipt").
+		Where("deleted_at IS NULL").
 		Find(&incomes).Error; err != nil {
 		return nil, err
 	}
@@ -98,5 +100,16 @@ func (r *GormIncomeRepo) Delete(ctx context.Context, id uint) error {
 }
 
 func (r *GormIncomeRepo) SoftDelete(ctx context.Context, id uint) error {
-	return r.db.WithContext(ctx).Delete(&domain.Income{}, id).Error
+	now := time.Now()
+	return r.db.WithContext(ctx).
+		Model(&domain.Income{}).
+		Where("id = ? AND deleted_at IS NULL", id).
+		Update("deleted_at", now).Error
+}
+
+func (r *GormIncomeRepo) Restore(ctx context.Context, id uint) error {
+	return r.db.WithContext(ctx).
+		Model(&domain.Income{}).
+		Where("id = ?", id).
+		Update("deleted_at", nil).Error
 }

@@ -120,6 +120,7 @@ func NewRouter(
 			incomes.DELETE("/:id/soft", incomeHandler.SoftDelete)
 			incomes.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin))
 			incomes.DELETE("/:id", incomeHandler.Delete)
+			incomes.PATCH(":id/restore", incomeHandler.Restore)
 		}
 
 		// Products routes

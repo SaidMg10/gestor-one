@@ -26,6 +26,7 @@ type IncomeRepo interface {
 	UpdateWithReceipt(ctx context.Context, income *Income, receipt *Receipt) error
 	Delete(ctx context.Context, id uint) error
 	SoftDelete(ctx context.Context, id uint) error
+	Restore(ctx context.Context, id uint) error
 }
 
 // ReceiptRepo defines an interface with methods for managing Receipt entities.

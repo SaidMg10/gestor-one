@@ -178,9 +178,18 @@ func (h *IncomeHandler) SoftDelete(c *gin.Context) {
 		return
 	}
 
-	userID := c.GetUint("user") // viene del middleware
+	userCtx, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 
-	err = h.svc.SoftDelete(c.Request.Context(), uint(id), userID)
+	user, ok := userCtx.(*domain.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user type in context"})
+		return
+	}
+	err = h.svc.SoftDelete(c.Request.Context(), uint(id), user.ID)
 	if err != nil {
 		if err == domain.ErrNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "income not found"})
@@ -212,4 +221,25 @@ func (h *IncomeHandler) Delete(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "income permanently deleted"})
+}
+
+func (h *IncomeHandler) Restore(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	err = h.svc.Restore(c.Request.Context(), uint(id))
+	if err != nil {
+		if err == domain.ErrNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "income not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "income restored"})
 }
