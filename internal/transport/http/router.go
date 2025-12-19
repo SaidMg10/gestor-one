@@ -13,6 +13,7 @@ func NewRouter(
 	userSvc *service.UserService,
 	authSvc *service.AuthService,
 	incomeSvc *service.IncomeService,
+	expenseSvc *service.ExpenseService,
 ) *gin.Engine {
 	r := gin.Default()
 
@@ -121,6 +122,23 @@ func NewRouter(
 			incomes.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin))
 			incomes.DELETE("/:id", incomeHandler.Delete)
 			incomes.PATCH(":id/restore", incomeHandler.Restore)
+		}
+
+		// Expense routes
+		expenses := v1.Group("/expenses")
+		expenses.Use(middleware.AuthTokenMiddleware())
+		{
+			expenseHandler := NewExpenseHandler(expenseSvc)
+			expenses.GET("", expenseHandler.List)
+			expenses.GET("/:id", expenseHandler.GetByID)
+			expenses.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin, domain.RoleEmployee))
+			expenses.POST("", expenseHandler.Create)
+			expenses.PATCH("/:id", expenseHandler.Update)
+			expenses.DELETE("/:id/soft", expenseHandler.SoftDelete)
+			expenses.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin))
+			expenses.DELETE("/:id", expenseHandler.Delete)
+			expenses.PATCH(":id/restore", expenseHandler.Restore)
+
 		}
 
 		// Products routes

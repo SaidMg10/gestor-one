@@ -32,8 +32,9 @@ func (fsl *FileStorageLocal) SavePDF(fileHeader *multipart.FileHeader) (string, 
 	if err != nil {
 		return "", "", "", fmt.Errorf("cannot open file: %w", err)
 	}
-	defer func() { _ = file.Close() }()
-
+	defer func() {
+		_ = file.Close()
+	}()
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
 		return "", "", "", fmt.Errorf("cannot read uploaded file: %w", err)
@@ -43,21 +44,21 @@ func (fsl *FileStorageLocal) SavePDF(fileHeader *multipart.FileHeader) (string, 
 	checksum := fmt.Sprintf("%x", hash[:])
 
 	filename := fmt.Sprintf("%d_receipt.pdf", time.Now().UnixNano())
-	uploadDir := "./uploads"
 
-	// Crear carpeta si no existe
+	uploadDir := "./uploads"
+	fullDiskPath := filepath.Join(uploadDir, filename)
+
 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 		return "", "", "", fmt.Errorf("cannot create uploads dir: %w", err)
 	}
 
-	fullPath := filepath.Join(uploadDir, filename)
-	out, err := os.Create(fullPath)
+	out, err := os.Create(fullDiskPath)
 	if err != nil {
 		return "", "", "", fmt.Errorf("cannot create file: %w", err)
 	}
-	defer func() { _ = out.Close() }()
-
-	// Resetear el puntero para copiar nuevamente
+	defer func() {
+		_ = out.Close()
+	}()
 	if _, err := file.Seek(0, 0); err != nil {
 		return "", "", "", fmt.Errorf("cannot reset file pointer: %w", err)
 	}
@@ -66,13 +67,10 @@ func (fsl *FileStorageLocal) SavePDF(fileHeader *multipart.FileHeader) (string, 
 		return "", "", "", fmt.Errorf("cannot save file: %w", err)
 	}
 
-	// Convertir a ruta absoluta
-	absPath, err := filepath.Abs(fullPath)
-	if err != nil {
-		return "", "", "", fmt.Errorf("cannot get absolute path: %w", err)
-	}
+	// PATH RELATIVA para BD
+	relPath := "/uploads/" + filename
 
-	return filename, checksum, absPath, nil
+	return filename, checksum, relPath, nil
 }
 
 func (fsl *FileStorageLocal) DeletePDF(filePath string) error {
@@ -80,17 +78,17 @@ func (fsl *FileStorageLocal) DeletePDF(filePath string) error {
 		return nil
 	}
 
-	absPath, err := filepath.Abs(filePath)
-	if err != nil {
-		return fmt.Errorf("cannot get absolute path: %w", err)
-	}
+	// recibes "/uploads/xxx.pdf"
+	filename := filepath.Base(filePath)
 
-	if _, err := os.Stat(absPath); err != nil {
+	fullDiskPath := filepath.Join("./uploads", filename)
+
+	if _, err := os.Stat(fullDiskPath); err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
 
-	return os.Remove(absPath)
+	return os.Remove(fullDiskPath)
 }

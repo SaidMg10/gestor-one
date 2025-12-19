@@ -20,10 +20,19 @@ type UserRepo interface {
 type IncomeRepo interface {
 	GetByID(ctx context.Context, id uint) (*Income, error)
 	List(ctx context.Context) ([]Income, error)
-	Create(ctx context.Context, income *Income) error
 	CreateWithReceipt(ctx context.Context, income *Income, receipt *Receipt) error
-	Update(ctx context.Context, income *Income) error
 	UpdateWithReceipt(ctx context.Context, income *Income, receipt *Receipt) error
+	Delete(ctx context.Context, id uint) error
+	SoftDelete(ctx context.Context, id uint) error
+	Restore(ctx context.Context, id uint) error
+}
+
+// ExpenseRepo defines an interface with methods for managing Expense entities.
+type ExpenseRepo interface {
+	GetByID(ctx context.Context, id uint) (*Expense, error)
+	List(ctx context.Context) ([]Expense, error)
+	CreateWithReceipt(ctx context.Context, expense *Expense, receipt *Receipt) error
+	UpdateWithReceipt(ctx context.Context, expense *Expense, receipt *Receipt) error
 	Delete(ctx context.Context, id uint) error
 	SoftDelete(ctx context.Context, id uint) error
 	Restore(ctx context.Context, id uint) error

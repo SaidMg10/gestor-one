@@ -1,2 +1,2 @@
-DROP TABLE IF NOT EXISTS incomes;
+DROP TABLE IF EXISTS incomes;
 
