@@ -82,7 +82,7 @@ func (h *IncomeHandler) Create(c *gin.Context) {
 	income := &domain.Income{
 		Amount:      req.Amount,
 		Description: req.Description,
-		Type:        domain.ReceiptType(req.Type),
+		Type:        domain.IncomeType(req.Type),
 		CreatedBy:   user.ID,
 	}
 
@@ -153,7 +153,7 @@ func (h *IncomeHandler) Update(c *gin.Context) {
 		income.Description = *req.Description
 	}
 	if req.Type != nil {
-		income.Type = domain.ReceiptType(*req.Type)
+		income.Type = domain.IncomeType(*req.Type)
 	}
 	if req.Date != nil {
 		income.Date = *req.Date

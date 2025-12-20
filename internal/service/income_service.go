@@ -40,7 +40,7 @@ func (s *IncomeService) Create(
 	if income.Type == "" {
 		return errors.New("income type is required")
 	}
-	if !domain.IsValidReceiptType(income.Type) {
+	if !domain.IsValidIncomeType(income.Type) {
 		return errors.New("invalid income type")
 	}
 	if income.CreatedBy == 0 {
@@ -50,7 +50,7 @@ func (s *IncomeService) Create(
 		income.Date = time.Now()
 	}
 
-	fileName, checksum, fullPath, err := s.fileStorage.SavePDF(fileHeader)
+	fileName, checksum, relPath, err := s.fileStorage.SavePDF(fileHeader)
 	if err != nil {
 		return fmt.Errorf("failed to save pdf: %w", err)
 	}
@@ -58,7 +58,7 @@ func (s *IncomeService) Create(
 	// Crear Receipt con la URL donde se guardó
 	receipt := &domain.Receipt{
 		FileName:   fileName,
-		FileURL:    fullPath,
+		RelPath:    relPath,
 		MimeType:   "application/pdf",
 		UploadedBy: income.CreatedBy,
 		Checksum:   checksum,
@@ -67,7 +67,7 @@ func (s *IncomeService) Create(
 	err = s.incomeRepo.CreateWithReceipt(ctx, income, receipt)
 	if err != nil {
 		// Si DB falla, eliminar archivo para evitar basura
-		if rmErr := s.fileStorage.DeletePDF(fullPath); rmErr != nil {
+		if rmErr := s.fileStorage.DeletePDF(relPath); rmErr != nil {
 			fmt.Printf("failed to remove file after tx error: %v", rmErr)
 		}
 		return fmt.Errorf("failed to create income with receipt: %w", err)
@@ -129,19 +129,19 @@ func (s *IncomeService) Update(
 			return errors.New("receipt not found for this income")
 		}
 
-		filename, checksum, fullPath, err := s.fileStorage.SavePDF(fileHeader)
+		filename, checksum, relPath, err := s.fileStorage.SavePDF(fileHeader)
 		if err != nil {
 			return fmt.Errorf("failed to save PDF: %w", err)
 		}
 
 		// Guardar path antiguo para eliminar después si cambia
 		if existing.Receipt.Checksum != "" && existing.Receipt.Checksum != checksum {
-			oldFilePath = existing.Receipt.FileURL
+			oldFilePath = existing.Receipt.RelPath
 		}
 
 		// Actualizar campos del receipt existente
 		existing.Receipt.FileName = filename
-		existing.Receipt.FileURL = fullPath
+		existing.Receipt.RelPath = relPath
 		existing.Receipt.MimeType = "application/pdf"
 		existing.Receipt.UploadedBy = userID
 		existing.Receipt.Checksum = checksum
@@ -154,7 +154,7 @@ func (s *IncomeService) Update(
 	if err != nil {
 		// rollback del archivo nuevo si hubo error
 		if receiptToUpdate != nil {
-			if rmErr := s.fileStorage.DeletePDF(receiptToUpdate.FileURL); rmErr != nil {
+			if rmErr := s.fileStorage.DeletePDF(receiptToUpdate.RelPath); rmErr != nil {
 				fmt.Printf("failed to remove new receipt after update error: %v", rmErr)
 			}
 		}
@@ -196,7 +196,7 @@ func (s *IncomeService) Delete(ctx context.Context, id uint) error {
 		return err
 	}
 
-	if err := s.fileStorage.DeletePDF(income.Receipt.FileURL); err != nil {
+	if err := s.fileStorage.DeletePDF(income.Receipt.RelPath); err != nil {
 		fmt.Printf("failed to remove receipt file after income delete: %v", err)
 	}
 
