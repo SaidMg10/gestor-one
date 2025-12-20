@@ -30,6 +30,8 @@ func NewRouter(
 		c.Next()
 	})
 
+	r.Static("/uploads", "./uploads")
+
 	middleware := middleware.NewMiddleware(authSvc, authSvc.Authenticator, authSvc.UserRepo)
 
 	r.GET("/health", func(c *gin.Context) {
@@ -42,7 +44,7 @@ func NewRouter(
 	// API V1
 	v1 := r.Group("/api/v1")
 	{
-		// Appointments routes
+		//  routes
 		users := v1.Group("/users")
 		{
 			userHandler := NewUserHandler(userSvc)
@@ -114,7 +116,8 @@ func NewRouter(
 		{
 			incomeHandler := NewIncomeHandler(incomeSvc)
 			incomes.GET("", incomeHandler.List)
-			// incomes.GET("/:id", incomeHandler.GetByID)
+			incomes.GET("/:id", incomeHandler.GetByID)
+			incomes.GET("/:id/download", incomeHandler.DownloadReceipt)
 			incomes.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin, domain.RoleEmployee))
 			incomes.POST("", incomeHandler.Create)
 			incomes.PATCH("/:id", incomeHandler.Update)
@@ -131,6 +134,7 @@ func NewRouter(
 			expenseHandler := NewExpenseHandler(expenseSvc)
 			expenses.GET("", expenseHandler.List)
 			expenses.GET("/:id", expenseHandler.GetByID)
+			expenses.GET("/:id/download", expenseHandler.DownloadReceipt)
 			expenses.Use(middleware.CheckRole(domain.RoleAdmin, domain.RoleSuperAdmin, domain.RoleEmployee))
 			expenses.POST("", expenseHandler.Create)
 			expenses.PATCH("/:id", expenseHandler.Update)

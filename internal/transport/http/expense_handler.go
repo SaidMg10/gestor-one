@@ -148,6 +148,31 @@ func (h *ExpenseHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func (h *ExpenseHandler) DownloadReceipt(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid expense ID"})
+		return
+	}
+
+	expense, err := h.svc.GetByID(c.Request.Context(), uint(id))
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// RelPath: /uploads/archivo.pdf -> archivo real en ./uploads
+	filename := filepath.Base(expense.Receipt.RelPath)
+	fullPath := filepath.Join("./uploads", filename)
+
+	c.FileAttachment(fullPath, filename)
+}
+
 func (h *ExpenseHandler) Update(c *gin.Context) {
 	var req UpdateExpenseRequest
 
