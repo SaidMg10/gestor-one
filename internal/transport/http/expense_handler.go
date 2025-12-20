@@ -97,7 +97,7 @@ func (h *ExpenseHandler) Create(c *gin.Context) {
 		Amount:      expense.Amount,
 		Description: expense.Description,
 		Type:        string(expense.Type),
-		ReceiptFile: expense.Receipt.FileURL,
+		ReceiptFile: expense.Receipt.RelPath,
 	}
 
 	c.JSON(http.StatusCreated, resp)
@@ -116,7 +116,7 @@ func (h *ExpenseHandler) List(c *gin.Context) {
 			Amount:      expense.Amount,
 			Description: expense.Description,
 			Type:        string(expense.Type),
-			ReceiptFile: expense.Receipt.FileURL,
+			ReceiptFile: expense.Receipt.RelPath,
 		}
 	}
 	c.JSON(http.StatusOK, expenseResponses)
@@ -143,7 +143,7 @@ func (h *ExpenseHandler) GetByID(c *gin.Context) {
 		Amount:      expense.Amount,
 		Description: expense.Description,
 		Type:        string(expense.Type),
-		ReceiptFile: expense.Receipt.FileURL,
+		ReceiptFile: expense.Receipt.RelPath,
 	}
 	c.JSON(http.StatusOK, response)
 }

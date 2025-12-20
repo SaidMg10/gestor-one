@@ -50,14 +50,14 @@ func (s *ExpenseService) Create(
 		expense.Date = time.Now()
 	}
 
-	fileName, checksum, fullPath, err := s.fileStorage.SavePDF(fileHeader)
+	fileName, checksum, relPath, err := s.fileStorage.SavePDF(fileHeader)
 	if err != nil {
 		return fmt.Errorf("failed to save pdf: %w", err)
 	}
 
 	receipt := &domain.Receipt{
 		FileName:   fileName,
-		FileURL:    fullPath,
+		RelPath:    relPath,
 		MimeType:   "application/pdf",
 		UploadedBy: expense.CreatedBy,
 		Checksum:   checksum,
@@ -65,7 +65,7 @@ func (s *ExpenseService) Create(
 
 	err = s.expenseRepo.CreateWithReceipt(ctx, expense, receipt)
 	if err != nil {
-		if rmErr := s.fileStorage.DeletePDF(fullPath); rmErr != nil {
+		if rmErr := s.fileStorage.DeletePDF(relPath); rmErr != nil {
 			fmt.Printf("failded to remove file after tx error: %v", rmErr)
 		}
 		return fmt.Errorf("failed to create expense with receipt: %w", err)
@@ -121,17 +121,17 @@ func (s ExpenseService) Update(
 			return errors.New("receipt not found for this expense")
 		}
 
-		fileName, checksum, fullPath, err := s.fileStorage.SavePDF(fileHeader)
+		fileName, checksum, relPath, err := s.fileStorage.SavePDF(fileHeader)
 		if err != nil {
 			return fmt.Errorf("failed to save pdf: %w", err)
 		}
 
 		if existing.Receipt.Checksum != "" && existing.Receipt.Checksum != checksum {
-			oldFilePath = existing.Receipt.FileURL
+			oldFilePath = existing.Receipt.RelPath
 		}
 
 		existing.Receipt.FileName = fileName
-		existing.Receipt.FileURL = fullPath
+		existing.Receipt.RelPath = relPath
 		existing.Receipt.MimeType = "application/pdf"
 		existing.Receipt.UploadedBy = userID
 		existing.Receipt.Checksum = checksum
@@ -142,7 +142,7 @@ func (s ExpenseService) Update(
 	err = s.expenseRepo.UpdateWithReceipt(ctx, existing, receiptToUpdate)
 	if err != nil {
 		if receiptToUpdate != nil {
-			if rmErr := s.fileStorage.DeletePDF(receiptToUpdate.FileURL); rmErr != nil {
+			if rmErr := s.fileStorage.DeletePDF(receiptToUpdate.RelPath); rmErr != nil {
 				fmt.Printf("failed to remove new receipt after update error: %v", rmErr)
 			}
 		}
@@ -182,7 +182,7 @@ func (s *ExpenseService) Delete(ctx context.Context, id uint) error {
 		return err
 	}
 
-	if err := s.fileStorage.DeletePDF(expense.Receipt.FileURL); err != nil {
+	if err := s.fileStorage.DeletePDF(expense.Receipt.RelPath); err != nil {
 		fmt.Printf("failed to remove receipt file after expense delete: %v", err)
 	}
 
