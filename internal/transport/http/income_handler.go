@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"path/filepath"
@@ -120,6 +121,57 @@ func (h *IncomeHandler) List(c *gin.Context) {
 		}
 	}
 	c.JSON(http.StatusOK, incomeResponses)
+}
+
+func (h *IncomeHandler) GetByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid income ID"})
+		return
+	}
+	income, err := h.svc.GetByID(c.Request.Context(), uint(id))
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	response := IncomeResponse{
+		ID:          income.ID,
+		Amount:      income.Amount,
+		Description: income.Description,
+		Type:        string(income.Type),
+		ReceiptFile: income.Receipt.RelPath,
+	}
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *IncomeHandler) DownloadReceipt(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid income ID"})
+		return
+	}
+
+	income, err := h.svc.GetByID(c.Request.Context(), uint(id))
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	// RelPath: /uploads/archivo.pdf -> archivo real en ./uploads
+	filename := filepath.Base(income.Receipt.RelPath)
+	fullPath := filepath.Join("./uploads", filename)
+
+	c.FileAttachment(fullPath, filename)
 }
 
 func (h *IncomeHandler) Update(c *gin.Context) {
