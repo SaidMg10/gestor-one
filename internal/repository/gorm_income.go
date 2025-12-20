@@ -41,18 +41,19 @@ func (r *GormIncomeRepo) List(ctx context.Context) ([]domain.Income, error) {
 	return incomes, nil
 }
 
-func (r *GormIncomeRepo) Create(ctx context.Context, income *domain.Income) error {
-	return r.db.WithContext(ctx).Create(income).Error
-}
-
-func (r *GormIncomeRepo) CreateWithReceipt(ctx context.Context, income *domain.Income, receipt *domain.Receipt) error {
+func (r *GormIncomeRepo) CreateWithReceipt(
+	ctx context.Context,
+	income *domain.Income,
+	receipt *domain.Receipt,
+) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(income).Error; err != nil {
 			return err
 		}
 
 		// En el repo, después de tx.Create(income)
-		receipt.IncomeID = income.ID
+		receipt.IncomeID = &income.ID
+		receipt.ExpenseID = nil
 		if err := tx.Create(receipt).Error; err != nil {
 			return err
 		}
@@ -61,14 +62,6 @@ func (r *GormIncomeRepo) CreateWithReceipt(ctx context.Context, income *domain.I
 
 		return nil
 	})
-}
-
-func (r *GormIncomeRepo) Update(ctx context.Context, income *domain.Income) error {
-	return r.db.WithContext(ctx).
-		Model(&income).
-		Where("id = ?", income.ID).
-		Updates(income).
-		Error
 }
 
 func (r *GormIncomeRepo) UpdateWithReceipt(
@@ -91,7 +84,7 @@ func (r *GormIncomeRepo) UpdateWithReceipt(
 
 		if receipt != nil {
 			receipt.ID = income.Receipt.ID
-			receipt.IncomeID = income.ID
+			receipt.IncomeID = &income.ID
 
 			if err := tx.Save(receipt).Error; err != nil {
 				return err

@@ -45,6 +45,7 @@ func main() {
 	// 3. Inicializar repositorios y servicios
 	userRepo := repository.NewGormUserRepo(db.DB)
 	incomeRepo := repository.NewGormIncomeRepo(db.DB)
+	expenseRepo := repository.NewGormExpenseRepo(db.DB)
 	userSvc := service.NewUserService(userRepo)
 	authSvc := service.NewAuthService(
 		userRepo, // repositorio de usuarios
@@ -54,8 +55,9 @@ func main() {
 		cfg.JWT.Issuer,
 	)
 	incomeSvc := service.NewIncomeService(incomeRepo, fileStorage)
+	expenseSvc := service.NewExpenseService(expenseRepo, fileStorage)
 
-	r := httpTransport.NewRouter(userSvc, authSvc, incomeSvc)
+	r := httpTransport.NewRouter(userSvc, authSvc, incomeSvc, expenseSvc)
 
 	// Mostrar que la config se cargó correctamente
 	fmt.Println("=================================")
